@@ -150,6 +150,8 @@ class Player:
                     image = pygame.transform.flip(image, True, False)
                     new_img.append(image)
                 self.img = new_img
+            
+            self.rect = pygame.Rect(self.x, self.y, self.img[1].get_width(), self.img[1].get_height())
 
         if self.big:
             new_img = []
@@ -161,7 +163,7 @@ class Player:
 
     def draw(self, win, offset):
         for layer in self.img:
-            win.blit(layer, (self.x - offset, self.y))
+            win.blit(layer, (self.x, self.y))
 
         self.animation_count += 1
         self.set_image()
@@ -176,17 +178,17 @@ class Player:
         prev_action, prev_direction = self.action, self.direction
 
         self.handle_attack()
-
-        if keys[pygame.K_a] and self.blocked_direction != "left":  # left
-            if self.action not in ["push",  "jump", "falling"] and self.action_type != "attack":
-                self.action = "walk"
-            self.direction = "left"
-            self.x -= self.vel
-        elif keys[pygame.K_d] and self.blocked_direction != "right":  # right
-            if self.action not in ["push", "jump",  "falling"] and self.action_type != "attack":
-                self.action = "walk"
-            self.direction = "right"
-            self.x += self.vel
+        if sum(keys):
+            if keys[pygame.K_a] and self.blocked_direction != "left":  # left
+                if self.action not in ["push",  "jump", "falling"] and self.action_type != "attack":
+                    self.action = "walk"
+                self.direction = "left"
+                self.x -= self.vel
+            elif keys[pygame.K_d] and self.blocked_direction != "right":  # right
+                if self.action not in ["push", "jump",  "falling"] and self.action_type != "attack":
+                    self.action = "walk"
+                self.direction = "right"
+                self.x += self.vel
         elif self.action_type != "attack" and not self.action in ["jump", "falling"]:
             self.action = "stand"
 
@@ -195,22 +197,21 @@ class Player:
             self.vel = self.RUN_VEL
 
         if self.jumping:
-            return
+            self.jump_count += 1
+            self.y -= self.JUMP_VEL
+            if self.jump_count >= self.jump_duration:
+                self.jumping = False
+                self.jump_count = 0
 
         if keys[pygame.K_f] and self.action_type != "attack":
             self.action = "push"
 
         if self.action != prev_action or self.direction != prev_direction:
             self.animation_count = 0
-
+        self.rect = pygame.Rect(self.x, self.y, self.img[1].get_width(), self.img[1].get_height())
+        
     def handle_jump(self, keys):
-        if self.jumping:
-            self.jump_count += 1
-            self.y -= self.JUMP_VEL
-            if self.jump_count >= self.jump_duration:
-                self.jumping = False
-                self.jump_count = 0
-        elif keys[pygame.K_SPACE] and self.grounded and self.action_type != "attack":
+        if keys[pygame.K_SPACE] and self.grounded and self.action_type != "attack":
             self.action = "jump"
             self.jumping = True
             self.jump_count = 1
@@ -219,12 +220,9 @@ class Player:
     def handle_attack(self):
         pressed = pygame.mouse.get_pressed()
 
-        if any(pressed) and not self.action_type == "attack":
+        if pressed[0] and not self.action_type == "attack":
             self.action_type = "attack"
             self.action = "chop"
 
     def collide(self, obj):
-        current_mask = pygame.mask.from_surface(self.img[1])
-        other_mask = pygame.mask.from_surface(obj.img)
-        offset = obj.x - self.x, obj.y - self.y
-        return current_mask.overlap(other_mask, offset)
+        return self.rect.colliderect(obj.rect)
