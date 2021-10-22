@@ -78,12 +78,10 @@ class Player:
         self.jump_count = 0
         if self.action == "falling":
             self.action = "stand"
-        while (result := self.collide(obj)):
-            if result[1] < obj.img.get_height() / 2:
-                break
+        while self.collide(obj):
             self.y -= 1
-        self.y += 1
-        self.grounded = True
+        else:
+            self.grounded = True
 
     def die(self):
         self.action = "dead"
@@ -92,6 +90,7 @@ class Player:
     def reset(self):
         self.x = self.start_x
         self.y = self.start_y
+        self.vel = 0
         self.jumping = False
         self.jump_count = 0
         self.jump_duration = 20
@@ -152,6 +151,13 @@ class Player:
                 self.img = new_img
             
             self.rect = pygame.Rect(self.x, self.y, self.img[1].get_width(), self.img[1].get_height())
+            
+            self.sensor = {
+                "ceiling": pygame.Rect(self.rect.left+1, self.rect.top, self.rect.width-2, 1),
+                "wall_right": pygame.Rect(self.rect.right, self.rect.top+1, 1, self.rect.height-2),
+                "wall_left": pygame.Rect(self.rect.left, self.rect.top+1, 1, self.rect.height-2),
+                "floor": pygame.Rect(self.rect.left+1, self.rect.bottom, self.rect.width-2, 1)
+            }
 
         if self.big:
             new_img = []
@@ -163,7 +169,7 @@ class Player:
 
     def draw(self, win, offset):
         for layer in self.img:
-            win.blit(layer, (self.x, self.y))
+            win.blit(layer, (self.x, self.y), (self.rect.width, self.rect.height))
 
         self.animation_count += 1
         self.set_image()
@@ -224,5 +230,5 @@ class Player:
             self.action_type = "attack"
             self.action = "chop"
 
-    def collide(self, obj):
-        return self.rect.colliderect(obj.rect)
+    def collide(self, obj, mode="floor"):
+        return self.sensor[mode].colliderect(obj.rect)
